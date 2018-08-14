@@ -1,0 +1,11 @@
+{
+  "value": "value",
+  "numericValue": 250.4,
+  "booleanValue": false,
+  "object": {
+    "booleanValue": true,
+    "object": {
+      "numericValue": 23
+    }
+  }
+}
