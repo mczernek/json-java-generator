@@ -2,7 +2,6 @@ package pl.mczernek.processor;
 
 import com.google.auto.service.AutoService;
 import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 
 import org.json.simple.JSONObject;
@@ -12,9 +11,6 @@ import org.json.simple.parser.ParseException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.Type;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -28,7 +24,6 @@ import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
@@ -79,7 +74,7 @@ public class JsonFileProcessor extends AbstractProcessor {
 
                 JSONParser parser = new JSONParser();
                 JSONObject object = (JSONObject)parser.parse(fileReader);
-                writeClassToFile(elementPackage, JsonObjectParser.build("JsonFile_" + elementName.toString(), object));
+                writeClassToFile(elementPackage, JsonObjectParser.parse("JsonFile_" + elementName.toString(), object));
 
 
             } catch (IOException ex) {

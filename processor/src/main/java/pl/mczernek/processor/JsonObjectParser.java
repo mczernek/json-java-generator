@@ -9,9 +9,9 @@ import javax.lang.model.element.Modifier;
 
 public class JsonObjectParser {
 
-    private static final TypeParser[] parsers = {new BooleanTypeParser(), new StringTypeParser(), new DoubleTypeParser()};
+    private static final TypeParser[] parsers = {new BooleanTypeParser(), new StringTypeParser(), new DoubleTypeParser(), new JSONObjectTypeParser()};
 
-    public static TypeSpec.Builder build(String name, JSONObject object) {
+    public static TypeSpec.Builder parse(String name, JSONObject object) {
         TypeSpec.Builder configClassBuilder = TypeSpec.classBuilder(name)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         for (Object key: object.keySet()) {
