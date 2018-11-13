@@ -2,6 +2,8 @@ package pl.mczernek.processor;
 
 import android.support.annotation.Nullable;
 
+import com.squareup.javapoet.CodeBlock;
+import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
@@ -14,17 +16,20 @@ public class JSONObjectTypeParser implements TypeParser {
 
     private final static String CANONICAL_JSON_OBJECT = "org.json.simple.JSONObject";
 
-    @Override @Nullable
-    public MethodSpec addEntry(TypeSpec.Builder builder, Object key, Object value) {
+    @Override
+    public boolean addEntry(TypeSpec.Builder builder, Object key, Object value) {
         if (value.getClass().getCanonicalName().equals(CANONICAL_JSON_OBJECT)) {
             TypeSpec type = JsonObjectParser.parse(key.toString(), (JSONObject) value).addModifiers(Modifier.STATIC, Modifier.PUBLIC).build();
             builder.addType(type);
-            return MethodSpec.methodBuilder((String) key)
+            String variableName = type.name;
+            builder.addField(FieldSpec.builder(TypeName.OBJECT, variableName, Modifier.STATIC).initializer("new $L()", type.name).build());
+            builder.addMethod(MethodSpec.methodBuilder((String) key)
                     .addModifiers(Modifier.FINAL, Modifier.PUBLIC, Modifier.STATIC)
                     .returns(TypeName.OBJECT)
-                    .addCode("return new $L();\n", type.name)
-                    .build();
+                    .addCode("return $L;\n", variableName)
+                    .build());
+            return true;
         }
-        return null;
+        return false;
     }
 }

@@ -16,10 +16,7 @@ public class JsonObjectParser {
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         for (Object key: object.keySet()) {
             for(TypeParser typeParser: parsers) {
-                MethodSpec method = typeParser.addEntry(configClassBuilder, key, object.get(key));
-                if(method != null) {
-                    configClassBuilder.addMethod(method);
-                }
+                if (typeParser.addEntry(configClassBuilder, key, object.get(key))) break;
             }
         }
         return configClassBuilder;
