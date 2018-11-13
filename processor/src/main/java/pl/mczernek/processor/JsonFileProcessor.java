@@ -37,14 +37,13 @@ import javax.tools.Diagnostic;
 
 import pl.mczernek.annotation.JsonFile;
 
+
 @SupportedAnnotationTypes("pl.mczernek.annotation.JsonFile")
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 @AutoService(Processor.class)
 public class JsonFileProcessor extends AbstractProcessor {
 
-    private final static String CANONICAL_STRING_NAME = "java.lang.String";
-    private final static String CANONICAL_BOOLEAN_NAME = "java.lang.Boolean";
-    private final static String CANONICAL_DOUBLE_NAME = "java.lang.Double";
+    private final TypeParser[] parsers = {new BooleanTypeParser(), new StringTypeParser(), new DoubleTypeParser()};
 
     private Messager messager;
     private Elements elements;
@@ -80,8 +79,6 @@ public class JsonFileProcessor extends AbstractProcessor {
 
             File jsonFile = new File(projectDir, filePath);
 
-            List<MethodSpec> valueMethods = new LinkedList<>();
-
             try {
                 FileReader fileReader = new FileReader(jsonFile);
 
@@ -89,30 +86,9 @@ public class JsonFileProcessor extends AbstractProcessor {
                 JSONObject object = (JSONObject)parser.parse(fileReader);
 
                 for (Object key: object.keySet()) {
-                        Object value = object.get(key);
-                        Type returnType = null;
-                        String returnValue = null;
-                        switch(value.getClass().getCanonicalName()) {
-                            case CANONICAL_STRING_NAME:
-                                returnType = String.class;
-                                returnValue = "\"" + value + "\"";
-                                break;
-                            case CANONICAL_BOOLEAN_NAME:
-                                returnType = Boolean.class;
-                                returnValue = "" + value;
-                                break;
-                            case CANONICAL_DOUBLE_NAME:
-                                returnType = Double.class;
-                                returnValue = "" + value;
-                                break;
-                        }
-                        if(returnType != null && returnValue != null) {
-                            valueMethods.add(MethodSpec.methodBuilder((String) key)
-                                    .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
-                                    .returns(returnType)
-                                    .addCode("return $L;\n", returnValue)
-                                    .build());
-                        }
+                    for(TypeParser typeParser: parsers) {
+                        if(typeParser.addEntry(configClassBuilder, key, object.get(key))) break;
+                    }
                 }
 
             } catch (IOException ex) {
@@ -120,8 +96,6 @@ public class JsonFileProcessor extends AbstractProcessor {
             }  catch (ParseException ex) {
                 messager.printMessage(Diagnostic.Kind.ERROR, "Invalid JSON format! " + jsonFile.getAbsolutePath());
             }
-
-            configClassBuilder.addMethods(valueMethods);
 
             writeClassToFile(elementPackage, configClassBuilder);
         }
