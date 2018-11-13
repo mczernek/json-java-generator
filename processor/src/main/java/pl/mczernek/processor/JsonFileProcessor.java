@@ -5,13 +5,16 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -22,7 +25,6 @@ import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
-
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -33,19 +35,16 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
-
 import pl.mczernek.annotation.JsonFile;
 
 @SupportedAnnotationTypes("pl.mczernek.annotation.JsonFile")
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 @AutoService(Processor.class)
 public class JsonFileProcessor extends AbstractProcessor {
+
+    private final static String CANONICAL_STRING_NAME = "java.lang.String";
+    private final static String CANONICAL_BOOLEAN_NAME = "java.lang.Boolean";
+    private final static String CANONICAL_DOUBLE_NAME = "java.lang.Double";
 
     private Messager messager;
     private Elements elements;
@@ -90,11 +89,30 @@ public class JsonFileProcessor extends AbstractProcessor {
                 JSONObject object = (JSONObject)parser.parse(fileReader);
 
                 for (Object key: object.keySet()) {
-                        valueMethods.add(MethodSpec.methodBuilder((String) key)
-                                .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
-                                .returns(String.class)
-                                .addCode("return \"$L\";\n", (String)key)
-                                .build());
+                        Object value = object.get(key);
+                        Type returnType = null;
+                        String returnValue = null;
+                        switch(value.getClass().getCanonicalName()) {
+                            case CANONICAL_STRING_NAME:
+                                returnType = String.class;
+                                returnValue = "\"" + value + "\"";
+                                break;
+                            case CANONICAL_BOOLEAN_NAME:
+                                returnType = Boolean.class;
+                                returnValue = "" + value;
+                                break;
+                            case CANONICAL_DOUBLE_NAME:
+                                returnType = Double.class;
+                                returnValue = "" + value;
+                                break;
+                        }
+                        if(returnType != null && returnValue != null) {
+                            valueMethods.add(MethodSpec.methodBuilder((String) key)
+                                    .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
+                                    .returns(returnType)
+                                    .addCode("return $L;\n", returnValue)
+                                    .build());
+                        }
                 }
 
             } catch (IOException ex) {
