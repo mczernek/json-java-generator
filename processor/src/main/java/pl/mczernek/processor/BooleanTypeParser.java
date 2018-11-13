@@ -1,5 +1,7 @@
 package pl.mczernek.processor;
 
+import android.support.annotation.Nullable;
+
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 
@@ -9,17 +11,15 @@ public class BooleanTypeParser implements TypeParser {
 
     private final static String CANONICAL_BOOLEAN_NAME = "java.lang.Boolean";
 
-    @Override
-    public boolean addEntry(TypeSpec.Builder builder, Object key, Object value) {
+    @Override @Nullable
+    public MethodSpec addEntry(TypeSpec.Builder builder, Object key, Object value) {
         if(value.getClass().getCanonicalName().equals(CANONICAL_BOOLEAN_NAME)) {
-            builder.addMethod(
-            MethodSpec.methodBuilder((String) key)
-                    .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
+            return MethodSpec.methodBuilder((String) key)
+                    .addModifiers(Modifier.FINAL, Modifier.PUBLIC, Modifier.STATIC)
                     .returns(Boolean.class)
                     .addCode("return $L;\n", value)
-                    .build());
-            return true;
+                    .build();
         }
-        return false;
+        return null;
     }
 }

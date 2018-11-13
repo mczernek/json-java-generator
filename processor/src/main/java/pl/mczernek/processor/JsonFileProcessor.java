@@ -43,8 +43,6 @@ import pl.mczernek.annotation.JsonFile;
 @AutoService(Processor.class)
 public class JsonFileProcessor extends AbstractProcessor {
 
-    private final TypeParser[] parsers = {new BooleanTypeParser(), new StringTypeParser(), new DoubleTypeParser()};
-
     private Messager messager;
     private Elements elements;
     private Filer filer;
@@ -70,9 +68,6 @@ public class JsonFileProcessor extends AbstractProcessor {
             PackageElement elementPackage = elements.getPackageOf(typeElement);
             Name elementName = typeElement.getSimpleName();
 
-            TypeSpec.Builder configClassBuilder = TypeSpec.classBuilder("JsonFile_" + elementName.toString())
-                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-
             String filePath = element.getAnnotation(JsonFile.class).path();
 
             File projectDir = new File(System.getProperty("user.dir"));
@@ -84,12 +79,8 @@ public class JsonFileProcessor extends AbstractProcessor {
 
                 JSONParser parser = new JSONParser();
                 JSONObject object = (JSONObject)parser.parse(fileReader);
+                writeClassToFile(elementPackage, JsonObjectParser.build("JsonFile_" + elementName.toString(), object));
 
-                for (Object key: object.keySet()) {
-                    for(TypeParser typeParser: parsers) {
-                        if(typeParser.addEntry(configClassBuilder, key, object.get(key))) break;
-                    }
-                }
 
             } catch (IOException ex) {
                 messager.printMessage(Diagnostic.Kind.ERROR, "Unable to locate file: " + jsonFile.getAbsolutePath());
@@ -97,7 +88,6 @@ public class JsonFileProcessor extends AbstractProcessor {
                 messager.printMessage(Diagnostic.Kind.ERROR, "Invalid JSON format! " + jsonFile.getAbsolutePath());
             }
 
-            writeClassToFile(elementPackage, configClassBuilder);
         }
 
         return false;

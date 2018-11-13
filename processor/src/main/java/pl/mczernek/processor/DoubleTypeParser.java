@@ -1,5 +1,7 @@
 package pl.mczernek.processor;
 
+import android.support.annotation.Nullable;
+
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 
@@ -9,17 +11,15 @@ public class DoubleTypeParser implements TypeParser {
 
     private final static String CANONICAL_DOUBLE_NAME = "java.lang.Double";
 
-    @Override
-    public boolean addEntry(TypeSpec.Builder builder, Object key, Object value) {
+    @Override @Nullable
+    public MethodSpec addEntry(TypeSpec.Builder builder, Object key, Object value) {
         if(value.getClass().getCanonicalName().equals(CANONICAL_DOUBLE_NAME)) {
-            builder.addMethod(
-            MethodSpec.methodBuilder((String) key)
-                    .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
+            return MethodSpec.methodBuilder((String) key)
+                    .addModifiers(Modifier.FINAL, Modifier.PUBLIC, Modifier.STATIC)
                     .returns(Double.class)
                     .addCode("return $L;\n", value)
-                    .build());
-            return true;
+                    .build();
         }
-        return false;
+        return null;
     }
 }
