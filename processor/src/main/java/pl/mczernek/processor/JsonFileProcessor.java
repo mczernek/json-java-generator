@@ -1,12 +1,17 @@
 package pl.mczernek.processor;
 
 import com.google.auto.service.AutoService;
-import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -17,6 +22,7 @@ import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
+
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -26,6 +32,13 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
+
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import pl.mczernek.annotation.JsonFile;
 
@@ -49,9 +62,6 @@ public class JsonFileProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
 
-//        messager.printMessage(Diagnostic.Kind.ERROR, "JsonFile annotation applicable only to classes");
-//        return true;
-
         for (Element element : roundEnvironment.getElementsAnnotatedWith(JsonFile.class)) {
             if (element.getKind() != ElementKind.CLASS) {
                 messager.printMessage(Diagnostic.Kind.ERROR, "JsonFile annotation applicable only to classes");
@@ -65,25 +75,50 @@ public class JsonFileProcessor extends AbstractProcessor {
             TypeSpec.Builder configClassBuilder = TypeSpec.classBuilder("JsonFile_" + elementName.toString())
                     .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
-            MethodSpec packageMethod = MethodSpec.methodBuilder("getPackage")
-                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                    .returns(String.class)
-                    .addCode("return \"$L\";\n", elementPackage.toString())
-                    .build();
+            String filePath = element.getAnnotation(JsonFile.class).path();
 
-            configClassBuilder.addMethod(packageMethod);
+            File projectDir = new File(System.getProperty("user.dir"));
+
+            File jsonFile = new File(projectDir, filePath);
+
+            List<MethodSpec> valueMethods = new LinkedList<>();
 
             try {
+                FileReader fileReader = new FileReader(jsonFile);
 
-                JavaFile.builder("pl.mczernek.jsonjavagenerator", configClassBuilder.build())
-                        .build()
-                        .writeTo(filer);
+                JSONParser parser = new JSONParser();
+                JSONObject object = (JSONObject)parser.parse(fileReader);
+
+                for (Object key: object.keySet()) {
+                        valueMethods.add(MethodSpec.methodBuilder((String) key)
+                                .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
+                                .returns(String.class)
+                                .addCode("return \"$L\";\n", (String)key)
+                                .build());
+                }
+
             } catch (IOException ex) {
-                messager.printMessage(Diagnostic.Kind.ERROR, "IOException while generating class: " + "JsonFile_" + elementName.toString());
+                messager.printMessage(Diagnostic.Kind.ERROR, "Unable to locate file: " + jsonFile.getAbsolutePath());
+            }  catch (ParseException ex) {
+                messager.printMessage(Diagnostic.Kind.ERROR, "Invalid JSON format! " + jsonFile.getAbsolutePath());
             }
 
+            configClassBuilder.addMethods(valueMethods);
+
+            writeClassToFile(elementPackage, configClassBuilder);
         }
 
         return false;
+    }
+
+    private void writeClassToFile(PackageElement elementPackage, TypeSpec.Builder configClassBuilder) {
+        TypeSpec typeSpec = configClassBuilder.build();
+        try {
+            JavaFile.builder(elementPackage.toString(), typeSpec)
+                    .build()
+                    .writeTo(filer);
+        } catch (IOException ex) {
+            messager.printMessage(Diagnostic.Kind.ERROR, "IOException while generating class: " + typeSpec.name);
+        }
     }
 }
